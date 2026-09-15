@@ -8,6 +8,17 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 
 
+def test_checksum_sidecar_uses_portable_lf_newline(tmp_path):
+    artifact = tmp_path / "artifact.bin"
+    artifact.write_bytes(b"release data")
+    subprocess.run(
+        [sys.executable, str(ROOT / "packaging" / "checksum_files.py"), str(artifact)],
+        check=True,
+    )
+    sidecar = artifact.with_name(f"{artifact.name}.sha256").read_bytes()
+    assert sidecar.endswith(b"\n") and not sidecar.endswith(b"\r\n")
+
+
 def test_mac_archive_preserves_executable_metadata(tmp_path):
     binary = tmp_path / "varenrich"
     binary.write_text("#!/bin/sh\nexit 0\n")
@@ -64,6 +75,8 @@ def test_windows_archive_contains_batch_launcher(tmp_path):
         launcher = bundle.read("CMHS-VarEnrich-0.1.0-Windows-x86_64/Start CMHS VarEnrich.bat")
     assert {"varenrich.exe", "Start CMHS VarEnrich.bat", "QUICKSTART.md"} <= names
     assert b"varenrich.exe gui" in launcher
+    sidecar = archive.with_name(f"{archive.name}.sha256").read_bytes()
+    assert sidecar.endswith(b"\n") and not sidecar.endswith(b"\r\n")
 
 
 def test_linux_tar_preserves_shell_launcher_mode(tmp_path):

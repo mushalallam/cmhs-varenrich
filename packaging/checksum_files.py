@@ -16,7 +16,7 @@ def main() -> int:
             raise SystemExit(f"File not found: {path}")
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         sidecar = path.with_name(f"{path.name}.sha256")
-        sidecar.write_text(f"{digest}  {path.name}\n", encoding="utf-8")
+        sidecar.write_bytes(f"{digest}  {path.name}\n".encode("ascii"))
         print(sidecar)
     return 0
 

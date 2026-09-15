@@ -93,7 +93,7 @@ def main() -> int:
             raise SystemExit(f"Archive lost executable permissions for {name}")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksum = archive.with_name(f"{archive.name}.sha256")
-    checksum.write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
+    checksum.write_bytes(f"{digest}  {archive.name}\n".encode("ascii"))
     print(archive)
     print(checksum)
     return 0
