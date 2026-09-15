@@ -23,3 +23,15 @@ def test_query_must_be_within_universe():
     else:
         raise AssertionError("Expected invalid universe to fail")
 
+
+def test_zero_overlap_terms_are_in_fdr_denominator():
+    universe = {f"G{index}" for index in range(1, 21)}
+    query = {"G1", "G2", "G3"}
+    sets = [GeneSet("HIT", "Hit", "demo", frozenset(query))]
+    sets.extend(
+        GeneSet(f"ZERO-{index}", "No overlap", "demo", frozenset({f"G{index}"}))
+        for index in range(4, 14)
+    )
+    result = enrich(query, universe, sets)[0]
+    assert result.fdr == min(1.0, result.p_value * len(sets))
+    assert len(enrich(query, universe, sets, min_overlap=0)) == len(sets)

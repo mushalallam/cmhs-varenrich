@@ -6,6 +6,8 @@ __pycache__/
 .ruff_cache/
 build/
 dist/
+release-assets/
 *.egg-info/
+*.spec
 demo-results/
-
+demo-results-vcf/

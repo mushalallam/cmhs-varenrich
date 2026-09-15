@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use CMHS VarEnrich, please cite this software and the annotation resources used."
+title: "CMHS VarEnrich: Human Rare-Variant Enrichment and Visualization"
+type: software
+authors:
+  - family-names: Allam
+    given-names: Mushal
+version: 0.1.0
+date-released: 2026-09-15
+license: MIT
+repository-code: "https://github.com/mushalallam/cmhs-varenrich"
+keywords:
+  - rare disease
+  - human genetics
+  - variant enrichment
+  - Gene Ontology
+  - hypergeometric test

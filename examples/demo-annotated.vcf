@@ -1,0 +1,12 @@
+##fileformat=VCFv4.2
+##reference=GRCh38
+##INFO=<ID=GENE,Number=1,Type=String,Description="HGNC gene symbol">
+##INFO=<ID=CONSEQUENCE,Number=1,Type=String,Description="Predicted molecular consequence">
+##INFO=<ID=CLNSIG,Number=1,Type=String,Description="Clinical significance">
+##INFO=<ID=CLNDN,Number=1,Type=String,Description="Condition name">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Population allele frequency">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	DEMO-001
+12	102852850	rs5030858	G	A	99	PASS	GENE=PAH;CONSEQUENCE=missense_variant;CLNSIG=Pathogenic;CLNDN=Phenylketonuria;AF=0.0001	GT	0/1
+14	54842084	.	T	C	60	PASS	GENE=GCH1;CONSEQUENCE=missense_variant;CLNSIG=Uncertain_significance;CLNDN=Hyperphenylalaninemia;AF=0.0004	GT	0/1
+4	17510366	.	C	T	20	LowQual	GENE=QDPR;CONSEQUENCE=missense_variant;CLNSIG=Likely_pathogenic;CLNDN=BH4_deficiency;AF=0.02	GT	1/1

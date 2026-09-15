@@ -11,4 +11,3 @@ def test_example_inputs_are_readable():
     assert {record.gene for record in records} == {"PAH", "GCH1", "QDPR"}
     sets = read_gene_sets(EXAMPLES / "demo-gene-sets.gmt")
     assert sets[0].source == "Disease"
-

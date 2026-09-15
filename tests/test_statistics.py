@@ -3,7 +3,11 @@ from itertools import pairwise
 
 import pytest
 
-from varenrich.statistics import benjamini_hochberg, hypergeom_survival
+from varenrich.statistics import (
+    benjamini_hochberg,
+    hypergeom_survival,
+    odds_ratio_confidence_interval,
+)
 
 
 def test_hypergeom_known_probability():
@@ -25,3 +29,9 @@ def test_bh_is_monotonic_by_p_value():
     ranked = sorted(zip(p_values, adjusted))
     assert all(first[1] <= second[1] for first, second in pairwise(ranked))
     assert adjusted == pytest.approx([0.02, 0.04, 0.04, 0.008])
+
+
+def test_odds_ratio_and_interval():
+    odds_ratio, low, high = odds_ratio_confidence_interval(3, 5, 4, 20)
+    assert odds_ratio == pytest.approx(21.0)
+    assert 0 < low < odds_ratio < high

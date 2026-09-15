@@ -1,0 +1,12 @@
+format-version: 1.2
+
+[Term]
+id: GO:0008150
+name: biological_process
+namespace: biological_process
+
+[Term]
+id: GO:0006575
+name: cellular modified amino acid metabolic process
+namespace: biological_process
+is_a: GO:0008150 ! biological_process

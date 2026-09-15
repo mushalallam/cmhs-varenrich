@@ -59,3 +59,27 @@ def benjamini_hochberg(p_values: Iterable[float]) -> list[float]:
         adjusted[index] = min(1.0, running)
     return adjusted
 
+
+def odds_ratio_confidence_interval(
+    overlap: int, query_size: int, set_size: int, universe_size: int
+) -> tuple[float, float, float]:
+    """Return the enrichment odds ratio and an approximate 95% confidence interval."""
+    a = overlap
+    b = query_size - overlap
+    c = set_size - overlap
+    d = universe_size - a - b - c
+    if min(a, b, c, d) < 0:
+        raise ValueError("counts do not form a valid 2x2 table")
+    numerator, denominator = a * d, b * c
+    odds_ratio = numerator / denominator if denominator else (math.inf if numerator else math.nan)
+    corrected = [float(value) for value in (a, b, c, d)]
+    if any(value == 0 for value in corrected):
+        corrected = [value + 0.5 for value in corrected]
+    ca, cb, cc, cd = corrected
+    corrected_or = (ca * cd) / (cb * cc)
+    margin = 1.96 * math.sqrt(sum(1 / value for value in corrected))
+    return (
+        odds_ratio,
+        math.exp(math.log(corrected_or) - margin),
+        math.exp(math.log(corrected_or) + margin),
+    )

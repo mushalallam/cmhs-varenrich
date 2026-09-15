@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 from .models import GeneSet
-from .statistics import benjamini_hochberg, hypergeom_survival
+from .statistics import benjamini_hochberg, hypergeom_survival, odds_ratio_confidence_interval
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,9 @@ class EnrichmentResult:
     universe_size: int
     expected: float
     fold_enrichment: float
+    odds_ratio: float
+    odds_ratio_ci_low: float
+    odds_ratio_ci_high: float
     p_value: float
     fdr: float
     genes: tuple[str, ...]
@@ -35,6 +38,8 @@ def enrich(
     min_overlap: int = 1,
 ) -> list[EnrichmentResult]:
     """Run one-sided hypergeometric over-representation analysis."""
+    if min_overlap < 0:
+        raise ValueError("min_overlap cannot be negative")
     if not universe_genes:
         raise ValueError("The background universe cannot be empty")
     outside = query_genes - universe_genes
@@ -46,9 +51,12 @@ def enrich(
     for gene_set in gene_sets:
         members = gene_set.genes & universe_genes
         hits = tuple(sorted(query_genes & members))
-        if len(hits) < min_overlap or not members:
+        if not members:
             continue
         expected = query_size * len(members) / len(universe_genes)
+        odds_ratio, ci_low, ci_high = odds_ratio_confidence_interval(
+            len(hits), query_size, len(members), len(universe_genes)
+        )
         raw.append(
             {
                 "term_id": gene_set.identifier,
@@ -60,6 +68,9 @@ def enrich(
                 "universe_size": len(universe_genes),
                 "expected": expected,
                 "fold_enrichment": len(hits) / expected if expected else 0.0,
+                "odds_ratio": odds_ratio,
+                "odds_ratio_ci_low": ci_low,
+                "odds_ratio_ci_high": ci_high,
                 "p_value": hypergeom_survival(
                     len(hits), query_size, len(members), len(universe_genes)
                 ),
@@ -68,4 +79,5 @@ def enrich(
         )
     adjusted = benjamini_hochberg(float(row["p_value"]) for row in raw)
     results = [EnrichmentResult(**row, fdr=fdr) for row, fdr in zip(raw, adjusted, strict=True)]
-    return sorted(results, key=lambda result: (result.fdr, result.p_value, -result.overlap))
+    visible = [result for result in results if result.overlap >= min_overlap]
+    return sorted(visible, key=lambda result: (result.fdr, result.p_value, -result.overlap))

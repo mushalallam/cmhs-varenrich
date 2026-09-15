@@ -1,0 +1,6 @@
+source	term_id	term_name	gene
+Disease	ORPHA:716	Phenylketonuria	PAH
+Disease	ORPHA:791	Tetrahydrobiopterin deficiency	GCH1
+Disease	ORPHA:791	Tetrahydrobiopterin deficiency	QDPR
+Pathway	R-HSA-1474151	Tetrahydrobiopterin biosynthesis	GCH1
+Pathway	R-HSA-1474151	Tetrahydrobiopterin biosynthesis	QDPR
