@@ -1,0 +1,7 @@
+RARE:HPH	Disease|Hyperphenylalaninemia genes	PAH	GCH1	QDPR	PTS	PCBD1	DNAJC12
+PATH:BH4	Pathway|Tetrahydrobiopterin metabolism	GCH1	QDPR	PTS	PCBD1	PAH
+RARE:BLEED	Disease|Hereditary coagulation disorders	F8	F9
+RARE:LIPID	Disease|Familial hypercholesterolemia	LDLR	APOB	PCSK9
+RARE:CYSTIC	Disease|Cystic fibrosis	CFTR
+RARE:BRCA	Disease|Hereditary breast and ovarian cancer	BRCA1	BRCA2
+

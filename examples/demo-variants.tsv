@@ -1,0 +1,5 @@
+sample	gene	variant	consequence	classification	disease
+DEMO-001	PAH	NM_000277.3:c.1222C>T	missense_variant	Pathogenic	Phenylketonuria
+DEMO-001	GCH1	NM_000161.3:c.671A>G	missense_variant	Uncertain significance	Hyperphenylalaninemia
+DEMO-001	QDPR	NM_000320.3:c.466G>A	missense_variant	Likely pathogenic	BH4-deficient hyperphenylalaninemia
+
