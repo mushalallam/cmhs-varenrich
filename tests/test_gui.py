@@ -1,6 +1,8 @@
+import json
 import threading
 import uuid
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from varenrich.gui import create_server
@@ -66,6 +68,68 @@ def test_gui_runs_end_to_end_local_analysis(tmp_path):
         reports = list(tmp_path.glob("analysis-*/report.html"))
         assert len(reports) == 1
         assert not list(tmp_path.glob("analysis-*/inputs"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_gui_removes_raw_uploads_after_failed_analysis(tmp_path):
+    server, token = create_server(tmp_path)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    bad_sets = tmp_path / "bad.gmt"
+    bad_sets.write_text("not a valid GMT\n")
+    try:
+        body, content_type = multipart(
+            {
+                "query": EXAMPLES / "demo-variants.tsv",
+                "universe": EXAMPLES / "demo-universe.txt",
+                "gene_sets": bad_sets,
+            },
+            {},
+        )
+        request = Request(
+            f"http://127.0.0.1:{server.server_port}/{token}/api/analyse",
+            data=body,
+            headers={"Content-Type": content_type},
+        )
+        try:
+            urlopen(request)
+        except HTTPError as error:
+            assert error.code == 400
+        else:
+            raise AssertionError("Invalid annotation file should fail")
+        assert not list(tmp_path.glob("analysis-*/inputs"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_gui_resource_install_endpoint(tmp_path, monkeypatch):
+    def fake_download(directory):
+        directory.mkdir(parents=True, exist_ok=True)
+        annotations = directory / "human-annotations.gmt"
+        annotations.write_text("A\tDisease|A\tPAH\nB\tPathway|B\tGCH1\n")
+        manifest = directory / "human-annotations.manifest.json"
+        manifest.write_text("{}\n")
+        return annotations, manifest
+
+    monkeypatch.setattr("varenrich.download.download_human_annotations", fake_download)
+    server, token = create_server(tmp_path)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        request = Request(
+            f"http://127.0.0.1:{server.server_port}/{token}/api/resources",
+            data=b"",
+            method="POST",
+        )
+        with urlopen(request) as response:
+            result = json.loads(response.read())
+        assert result["gene_sets"] == 2
+        assert Path(result["path"]).is_file()
     finally:
         server.shutdown()
         server.server_close()

@@ -43,19 +43,20 @@ button:disabled{{opacity:.55}}#status{{margin-top:18px;padding:13px;background:#
 <main><form class="panel" id="analysis"><div class="grid">
 <label>Query file<small>Gene list, CSV/TSV variant table, annotated VCF, or VCF.GZ</small><input type="file" name="query" required></label>
 <label>Background universe<small>Every gene that could have been selected; one symbol per line</small><input type="file" name="universe" required></label>
-<label>Annotation collection<small>GO/pathway/disease gene sets in GMT format</small><input type="file" name="gene_sets" required></label>
+<label>Annotation collection<small>Optional custom GO/pathway/disease GMT; otherwise use installed annotations</small><input type="file" name="gene_sets"></label>
 <label>Report title<small>Shown at the top of the exported report</small><input name="title" value="CMHS VarEnrich Report"></label>
 <label>Minimum variant QUAL<small>Leave blank to retain missing/any QUAL</small><input name="min_quality" type="number" step="any"></label>
 <label>Maximum allele frequency<small>Example: 0.01 for variants at or below 1%</small><input name="max_af" type="number" min="0" max="1" step="any"></label>
-</div><div class="checks"><label><input name="pass_only" type="checkbox"> Retain only PASS variants</label></div>
+</div><div class="checks"><label><input name="pass_only" type="checkbox"> Retain only PASS variants</label><label><input name="use_installed" type="checkbox" checked> Use installed human annotations when no custom GMT is selected</label></div>
 <p class="notice">Patient data is processed locally and not transmitted. The background universe controls the statistical question. For a panel, use adequately tested panel genes—not the whole genome.</p>
-<button id="run">Run analysis</button><div id="status" role="status">Ready. No files have been uploaded anywhere.</div></form></main>
+<button id="run">Run analysis</button> <button type="button" id="resources">Install/update public human annotations</button><div id="status" role="status">Ready. No files have been uploaded anywhere.</div></form></main>
 <script>
-const form=document.getElementById('analysis'),status=document.getElementById('status'),button=document.getElementById('run');
+const form=document.getElementById('analysis'),status=document.getElementById('status'),button=document.getElementById('run'),resources=document.getElementById('resources');
 form.addEventListener('submit',async e=>{{e.preventDefault();button.disabled=true;status.textContent='Analysing locally…';
 try{{let response=await fetch('/{token}/api/analyse',{{method:'POST',body:new FormData(form)}}),data=await response.json();
 if(!response.ok)throw new Error(data.error||'Analysis failed');status.innerHTML=`Complete: ${{data.query_size}} genes, ${{data.results}} tested terms.<br><a target="_blank" href="${{data.report_url}}">Open interactive report</a><br>Saved to: ${{data.output_directory}}`;}}
 catch(error){{status.textContent='Error: '+error.message}}finally{{button.disabled=false}}}});
+resources.addEventListener('click',async()=>{{resources.disabled=true;status.textContent='Downloading and building public GO, HPO, ClinVar, and Reactome annotations…';try{{let response=await fetch('/{token}/api/resources',{{method:'POST'}}),data=await response.json();if(!response.ok)throw new Error(data.error||'Resource update failed');status.textContent=`Human annotations ready: ${{data.gene_sets}} gene sets\n${{data.path}}`;}}catch(error){{status.textContent='Error: '+error.message}}finally{{resources.disabled=false}}}});
 </script></body></html>"""
 
 
@@ -85,6 +86,7 @@ def _save_upload(field: tuple[str, bytes], directory: Path, safe_name: str) -> P
 def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer, str]:
     token = secrets.token_urlsafe(24)
     root = output_root or Path.home() / "Documents" / "CMHS-VarEnrich-Results"
+    resource_root = root.parent / "CMHS-VarEnrich-Resources"
     root.mkdir(parents=True, exist_ok=True)
 
     class Handler(BaseHTTPRequestHandler):
@@ -128,9 +130,29 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:
-            if urlsplit(self.path).path != f"/{token}/api/analyse":
+            request_path = urlsplit(self.path).path
+            if request_path == f"/{token}/api/resources":
+                try:
+                    from .download import download_human_annotations
+
+                    annotations, manifest = download_human_annotations(resource_root)
+                    with annotations.open(encoding="utf-8") as handle:
+                        count = sum(1 for line in handle if line.strip())
+                    self._json(
+                        HTTPStatus.OK,
+                        {
+                            "gene_sets": count,
+                            "path": str(annotations),
+                            "manifest": str(manifest),
+                        },
+                    )
+                except (OSError, ValueError) as error:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+                return
+            if request_path != f"/{token}/api/analyse":
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
+            uploads: Path | None = None
             try:
                 length = int(self.headers.get("Content-Length", "0"))
                 if length <= 0 or length > MAX_UPLOAD_BYTES:
@@ -138,9 +160,9 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
                 fields = _multipart_fields(
                     self.rfile.read(length), self.headers.get("Content-Type", "")
                 )
-                required = ("query", "universe", "gene_sets")
+                required = ("query", "universe")
                 if any(not isinstance(fields.get(name), tuple) for name in required):
-                    raise ValueError("Query, universe, and annotation files are required")
+                    raise ValueError("Query and universe files are required")
                 stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
                 job = f"analysis-{stamp}-{secrets.token_hex(3)}"
                 destination = root / job
@@ -148,7 +170,20 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
                 uploads.mkdir(parents=True)
                 query_path = _save_upload(fields["query"], uploads, "query")  # type: ignore[arg-type]
                 universe_path = _save_upload(fields["universe"], uploads, "universe")  # type: ignore[arg-type]
-                sets_path = _save_upload(fields["gene_sets"], uploads, "gene-sets")  # type: ignore[arg-type]
+                if isinstance(fields.get("gene_sets"), tuple):
+                    sets_path = _save_upload(
+                        fields["gene_sets"],
+                        uploads,
+                        "gene-sets",  # type: ignore[arg-type]
+                    )
+                elif "use_installed" in fields:
+                    sets_path = resource_root / "human-annotations.gmt"
+                    if not sets_path.is_file():
+                        raise ValueError(
+                            "Human annotations are not installed; select a custom GMT or click Install/update"
+                        )
+                else:
+                    raise ValueError("Select an annotation GMT or use installed human annotations")
                 lower_name = query_path.name.lower()
                 if lower_name.endswith((".vcf", ".vcf.gz")):
                     records = read_vcf(query_path)
@@ -202,7 +237,7 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
                     json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
                 )
                 shutil.copy2(sets_path, destination / "annotation-collection.gmt")
-                shutil.rmtree(uploads)
+                shutil.rmtree(uploads, ignore_errors=True)
                 self._json(
                     HTTPStatus.OK,
                     {
@@ -213,7 +248,12 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
                     },
                 )
             except (OSError, TypeError, ValueError) as error:
+                if uploads is not None:
+                    shutil.rmtree(uploads, ignore_errors=True)
                 self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            finally:
+                if uploads is not None:
+                    shutil.rmtree(uploads, ignore_errors=True)
 
         def log_message(self, format: str, *args: object) -> None:
             return

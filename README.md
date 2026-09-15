@@ -6,7 +6,7 @@ CMHS VarEnrich connects variants to genes and tests whether the affected genes a
 
 ![CMHS VarEnrich workflow](docs/images/workflow.svg)
 
-> **Development status:** early preview. Not validated for diagnosis or clinical decision-making.
+> **Development status:** version 0.1 research release. Not validated for diagnosis or clinical decision-making.
 
 ## Why it is different
 
@@ -64,7 +64,7 @@ This explicit command downloads only public annotations—not patient data—and
 varenrich download-resources --output varenrich-human-resources
 ```
 
-It currently builds human GO, HPO, Reactome, and ClinVar disease collections. Keep the generated manifest with each analysis to identify the exact source-file and output SHA-256 hashes. Existing local annotation bundles never update silently.
+It currently builds human GO, HPO, Reactome, and ClinVar disease collections. Keep the generated manifest with each analysis to identify the exact source-file and output SHA-256 hashes. Existing local annotation bundles never update silently. See [docs/data-sources.md](docs/data-sources.md) for provenance and attribution details.
 
 ## Inputs
 

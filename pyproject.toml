@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cmhs-varenrich"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Privacy-first rare-variant, disease, and pathway enrichment for human genomics"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "Human Genomics Solutions"}]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",

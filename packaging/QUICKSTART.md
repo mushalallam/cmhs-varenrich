@@ -10,6 +10,8 @@ This package runs locally and does not require Python, Conda, or an internet con
 
 Select a query file, a tested-gene background universe, and a GMT annotation collection. Reports are saved under `Documents/CMHS-VarEnrich-Results`.
 
+The graphical application can download and install current public GO, HPO, ClinVar, and Reactome annotations using the **Install/update public human annotations** button. This downloads annotation data only; it never sends patient files.
+
 ## Security notices
 
 Preview builds may be unsigned. Verify the adjacent `.sha256` checksum before bypassing an operating-system warning. Permanent warning-free distribution requires Apple notarization and trusted Windows code signing.
