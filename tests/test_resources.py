@@ -7,6 +7,7 @@ from varenrich.resources import (
     build_hpo_gene_sets,
     build_mapping_gene_sets,
     build_reactome_gene_sets,
+    resource_provenance,
     write_gmt,
     write_resource_manifest,
 )
@@ -46,3 +47,20 @@ def test_reactome_adapter_maps_uniprot_and_filters_human():
     assert len(sets) == 1
     assert sets[0].identifier == "R-HSA-1474151"
     assert sets[0].genes == {"PAH"}
+
+
+def test_resource_provenance_verifies_manifest(tmp_path):
+    sets = build_mapping_gene_sets(EXAMPLES / "demo-mapping.tsv")
+    output = write_gmt(sets, tmp_path / "annotations.gmt")
+    write_resource_manifest(
+        [EXAMPLES / "demo-mapping.tsv"], output, tmp_path / "annotations.manifest.json"
+    )
+    provenance = resource_provenance(output)
+    assert provenance["manifest"]["output"]["sha256"] == provenance["sha256"]
+    output.write_text(output.read_text() + "EXTRA\tCustom|Extra\tPAH\n")
+    try:
+        resource_provenance(output)
+    except ValueError as error:
+        assert "checksum" in str(error)
+    else:
+        raise AssertionError("Modified resource should fail provenance validation")

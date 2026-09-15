@@ -229,12 +229,14 @@ def write_resource_manifest(
     path: str | Path,
     *,
     source_urls: dict[str, str] | None = None,
+    source_metadata: dict[str, object] | None = None,
 ) -> Path:
     manifest = {
         "schema_version": 1,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "builder": "CMHS VarEnrich",
         "source_urls": source_urls or {},
+        "source_metadata": source_metadata or {},
         "inputs": [
             {
                 "filename": Path(item).name,
@@ -252,3 +254,20 @@ def write_resource_manifest(
     destination = Path(path)
     destination.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return destination
+
+
+def resource_provenance(gmt_path: str | Path) -> dict[str, object]:
+    """Return annotation provenance and verify an adjacent manifest when present."""
+    gmt = Path(gmt_path)
+    actual = sha256(gmt)
+    provenance: dict[str, object] = {"filename": gmt.name, "sha256": actual}
+    manifest_path = gmt.with_suffix(".manifest.json")
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        expected = manifest.get("output", {}).get("sha256")
+        if expected and expected != actual:
+            raise ValueError(
+                f"Annotation checksum does not match {manifest_path.name}; rebuild or restore the resource"
+            )
+        provenance["manifest"] = manifest
+    return provenance

@@ -29,7 +29,7 @@ The browser interface is available only through a random-token URL on `127.0.0.1
 
 ## Try the synthetic demonstration
 
-Python 3.10 or newer is required during early development.
+Python 3.10 or newer is required for source installation.
 
 ```bash
 python -m venv .venv
@@ -42,6 +42,8 @@ varenrich analyse \
   --gene-sets examples/demo-gene-sets.gmt \
   --output demo-results
 ```
+
+Users who prefer not to install Python can download the standalone application for macOS, Windows, or Linux. See [platform installation and trust](docs/platform-support.md).
 
 Open `demo-results/report.html`. The bundled demonstration is entirely synthetic and contains no patient information.
 
@@ -95,7 +97,7 @@ HP:0001250	HPO|Seizure	SCN1A	SCN2A	STXBP1
 ![Synthetic enrichment output](docs/images/example-enrichment.svg)
 
 - `report.html`: self-contained interactive report and embedded SVG chart
-- `figures/enrichment-bars.svg` and `figures/enrichment-bubbles.svg`: editable publication figures
+- `figures/enrichment-bars.svg`, `enrichment-bubbles.svg`, and `term-gene-network.svg`: editable publication figures
 - `enrichment-results.tsv`: complete machine-readable results
 - `filtered-variants.tsv`: retained variant evidence when a variant input is used
 - `analysis-metadata.json`: method, version, input type, universe size, and resource paths
@@ -106,13 +108,13 @@ The current method is over-representation analysis for an unranked gene list. It
 
 ## Privacy and clinical use
 
-Analysis runs locally. The program does not make network requests. Inputs may still contain identifiable sample labels, so outputs must be handled under the same institutional controls as the source data.
+Analysis runs locally and never makes network requests. Only the explicit annotation-install/update command or GUI button contacts the documented public database hosts; it does not read or transmit patient inputs. Inputs may still contain identifiable sample labels, so outputs must be handled under the same institutional controls as the source data.
 
 CMHS VarEnrich is research software. ClinVar and other public resources contain submitted interpretations that require expert review; enrichment significance does not establish pathogenicity, causality, or diagnosis.
 
 ## Roadmap
 
-See [docs/roadmap.md](docs/roadmap.md) for planned versioned annotations, phenotype-aware analysis, interactive ontology trees, VCF support, and cross-platform applications.
+See [docs/roadmap.md](docs/roadmap.md) for the completed v0.1 scope and planned identifier normalization, ontology-tree views, additional exports, and cohort burden models.
 
 The statistical method and assumptions are documented in [docs/methods.md](docs/methods.md), with independent numerical checks in [docs/validation.md](docs/validation.md). Security and data-handling details are in [SECURITY.md](SECURITY.md).
 

@@ -18,6 +18,8 @@ from .resources import (
     build_hpo_gene_sets,
     build_mapping_gene_sets,
     build_reactome_gene_sets,
+    resource_provenance,
+    sha256,
     write_gmt,
     write_resource_manifest,
 )
@@ -47,6 +49,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--classification",
         action="append",
         help="retain classifications containing this text; repeat to allow several",
+    )
+    analyse.add_argument(
+        "--consequence",
+        action="append",
+        help="retain consequences containing this text; repeat to allow several",
+    )
+    analyse.add_argument(
+        "--zygosity",
+        action="append",
+        choices=("heterozygous", "homozygous", "hemizygous"),
+        help="retain this called zygosity; repeat to allow several",
     )
     analyse.add_argument("--title", default="CMHS VarEnrich Report")
     resources = subparsers.add_parser("build-resources", help="build a versioned local GMT bundle")
@@ -89,6 +102,8 @@ def run_analysis(args: argparse.Namespace) -> int:
         max_allele_frequency=args.max_af,
         pass_only=args.pass_only,
         classifications=set(args.classification or []),
+        consequences=set(args.consequence or []),
+        zygosities=set(args.zygosity or []),
     )
     if (args.vcf or args.variants) and not records:
         raise ValueError("No variants remain after filtering")
@@ -114,10 +129,13 @@ def run_analysis(args: argparse.Namespace) -> int:
             "max_allele_frequency": args.max_af,
             "pass_only": args.pass_only,
             "classifications": args.classification or [],
+            "consequences": args.consequence or [],
+            "zygosities": args.zygosity or [],
         },
         "method": "one-sided hypergeometric survival test; Benjamini-Hochberg FDR",
-        "gene_sets_file": str(Path(args.gene_sets).resolve()),
-        "universe_file": str(Path(args.universe).resolve()),
+        "annotation_resource": resource_provenance(args.gene_sets),
+        "universe_file": Path(args.universe).name,
+        "universe_sha256": sha256(args.universe),
     }
     write_results_tsv(results, destination / "enrichment-results.tsv")
     write_svg_figures(results, destination / "figures")

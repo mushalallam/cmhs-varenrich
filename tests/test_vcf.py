@@ -19,6 +19,18 @@ def test_pathogenic_text_filter():
     records = read_vcf(EXAMPLES / "demo-annotated.vcf")
     kept = filter_variants(records, classifications={"pathogenic"})
     assert {record.gene for record in kept} == {"PAH", "QDPR"}
+    kept = filter_variants(records, consequences={"missense"}, zygosities={"homozygous"})
+    assert {record.gene for record in kept} == {"QDPR"}
+
+
+def test_invalid_allele_frequency_threshold_fails():
+    records = read_vcf(EXAMPLES / "demo-annotated.vcf")
+    try:
+        filter_variants(records, max_allele_frequency=1.1)
+    except ValueError as error:
+        assert "between 0 and 1" in str(error)
+    else:
+        raise AssertionError("Invalid maximum AF should fail")
 
 
 def test_reference_genotype_is_not_returned(tmp_path):

@@ -23,6 +23,29 @@ SOURCES = {
     "reactome": "https://reactome.org/download/current/UniProt2Reactome_All_Levels.txt",
 }
 
+SOURCE_METADATA = {
+    "Gene Ontology": {
+        "files": ["go_obo", "go_gaf"],
+        "license": "CC BY 4.0",
+        "license_url": "https://geneontology.org/docs/go-citation-policy/",
+    },
+    "Human Phenotype Ontology": {
+        "files": ["hpo"],
+        "license": "HPO attribution, citation, and version-display terms",
+        "license_url": "https://human-phenotype-ontology.github.io/license.html",
+    },
+    "ClinVar": {
+        "files": ["clinvar"],
+        "license": "Freely available; attribution requested",
+        "license_url": "https://www.ncbi.nlm.nih.gov/clinvar/docs/maintenance_use/",
+    },
+    "Reactome": {
+        "files": ["reactome"],
+        "license": "CC0 1.0 (database data and derived files)",
+        "license_url": "https://reactome.org/license",
+    },
+}
+
 
 def download_file(url: str, path: Path) -> Path:
     request = Request(url, headers={"User-Agent": "CMHS-VarEnrich/0.1 (+research software)"})
@@ -57,5 +80,6 @@ def download_human_annotations(directory: str | Path) -> tuple[Path, Path]:
         output,
         destination / "human-annotations.manifest.json",
         source_urls=SOURCES,
+        source_metadata=SOURCE_METADATA,
     )
     return output, manifest

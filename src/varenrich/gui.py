@@ -19,6 +19,7 @@ from . import __version__
 from .analysis import enrich
 from .io import filter_variants, read_gene_list, read_gene_sets, read_variant_table, read_vcf
 from .report import write_html_report, write_results_tsv, write_svg_figures, write_variants_tsv
+from .resources import resource_provenance, sha256
 
 MAX_UPLOAD_BYTES = 250 * 1024 * 1024
 
@@ -47,6 +48,9 @@ button:disabled{{opacity:.55}}#status{{margin-top:18px;padding:13px;background:#
 <label>Report title<small>Shown at the top of the exported report</small><input name="title" value="CMHS VarEnrich Report"></label>
 <label>Minimum variant QUAL<small>Leave blank to retain missing/any QUAL</small><input name="min_quality" type="number" step="any"></label>
 <label>Maximum allele frequency<small>Example: 0.01 for variants at or below 1%</small><input name="max_af" type="number" min="0" max="1" step="any"></label>
+<label>Classification contains<small>Example: pathogenic; leave blank for all</small><input name="classification"></label>
+<label>Consequence contains<small>Example: missense_variant; leave blank for all</small><input name="consequence"></label>
+<label>Zygosity<small>Optional genotype filter</small><select name="zygosity"><option value="">Any called genotype</option><option>heterozygous</option><option>homozygous</option><option>hemizygous</option></select></label>
 </div><div class="checks"><label><input name="pass_only" type="checkbox"> Retain only PASS variants</label><label><input name="use_installed" type="checkbox" checked> Use installed human annotations when no custom GMT is selected</label></div>
 <p class="notice">Patient data is processed locally and not transmitted. The background universe controls the statistical question. For a panel, use adequately tested panel genes—not the whole genome.</p>
 <button id="run">Run analysis</button> <button type="button" id="resources">Install/update public human annotations</button><div id="status" role="status">Ready. No files have been uploaded anywhere.</div></form></main>
@@ -98,6 +102,8 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "DENY")
+            self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline'")
             self.end_headers()
             self.wfile.write(body)
@@ -205,7 +211,16 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
                     min_quality=min_quality,
                     max_allele_frequency=max_af,
                     pass_only="pass_only" in fields,
+                    classifications={str(fields["classification"])}
+                    if fields.get("classification")
+                    else None,
+                    consequences={str(fields["consequence"])}
+                    if fields.get("consequence")
+                    else None,
+                    zygosities={str(fields["zygosity"])} if fields.get("zygosity") else None,
                 )
+                if input_type != "gene list" and not records:
+                    raise ValueError("No variants remain after filtering")
                 query = (
                     {record.gene for record in records} if records else read_gene_list(query_path)
                 )
@@ -223,6 +238,17 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
                     "results_returned": len(results),
                     "input_type": input_type,
                     "variant_records": len(records),
+                    "filters": {
+                        "min_quality": min_quality,
+                        "max_allele_frequency": max_af,
+                        "pass_only": "pass_only" in fields,
+                        "classification": fields.get("classification", ""),
+                        "consequence": fields.get("consequence", ""),
+                        "zygosity": fields.get("zygosity", ""),
+                    },
+                    "annotation_resource": resource_provenance(sets_path),
+                    "universe_file": universe_path.name,
+                    "universe_sha256": sha256(universe_path),
                     "method": "one-sided hypergeometric survival test; Benjamini-Hochberg FDR",
                 }
                 write_results_tsv(results, destination / "enrichment-results.tsv")
@@ -236,7 +262,6 @@ def create_server(output_root: Path | None = None) -> tuple[ThreadingHTTPServer,
                 (destination / "analysis-metadata.json").write_text(
                     json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
                 )
-                shutil.copy2(sets_path, destination / "annotation-collection.gmt")
                 shutil.rmtree(uploads, ignore_errors=True)
                 self._json(
                     HTTPStatus.OK,

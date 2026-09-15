@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "Human Genomics Solutions"}]
+keywords = ["rare disease", "human genetics", "variants", "enrichment", "bioinformatics"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
@@ -19,6 +20,11 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
+
+[project.urls]
+Homepage = "https://github.com/mushalallam/cmhs-varenrich"
+Repository = "https://github.com/mushalallam/cmhs-varenrich"
+Issues = "https://github.com/mushalallam/cmhs-varenrich/issues"
 
 [project.scripts]
 varenrich = "varenrich.cli:main"

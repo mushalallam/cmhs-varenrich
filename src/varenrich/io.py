@@ -241,8 +241,14 @@ def filter_variants(
     max_allele_frequency: float | None = None,
     pass_only: bool = False,
     classifications: set[str] | None = None,
+    consequences: set[str] | None = None,
+    zygosities: set[str] | None = None,
 ) -> list[VariantRecord]:
+    if max_allele_frequency is not None and not 0 <= max_allele_frequency <= 1:
+        raise ValueError("max_allele_frequency must be between 0 and 1")
     wanted = {value.casefold() for value in classifications or set()}
+    wanted_consequences = {value.casefold() for value in consequences or set()}
+    wanted_zygosities = {value.casefold() for value in zygosities or set()}
     kept = []
     for record in records:
         if min_quality is not None and (record.quality is None or record.quality < min_quality):
@@ -254,6 +260,12 @@ def filter_variants(
         if pass_only and record.filter_status not in {"", ".", "PASS"}:
             continue
         if wanted and not any(value in record.classification.casefold() for value in wanted):
+            continue
+        if wanted_consequences and not any(
+            value in record.consequence.casefold() for value in wanted_consequences
+        ):
+            continue
+        if wanted_zygosities and record.zygosity.casefold() not in wanted_zygosities:
             continue
         kept.append(record)
     return kept

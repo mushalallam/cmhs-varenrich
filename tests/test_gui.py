@@ -36,6 +36,8 @@ def test_gui_binds_to_loopback_and_requires_token(tmp_path):
         assert server.server_address[0] == "127.0.0.1"
         with urlopen(f"http://127.0.0.1:{server.server_port}/{token}/") as response:
             page = response.read().decode()
+            assert response.headers["X-Frame-Options"] == "DENY"
+            assert response.headers["Referrer-Policy"] == "no-referrer"
         assert "CMHS VarEnrich" in page
         assert "not transmitted" in page
     finally:
@@ -130,6 +132,36 @@ def test_gui_resource_install_endpoint(tmp_path, monkeypatch):
             result = json.loads(response.read())
         assert result["gene_sets"] == 2
         assert Path(result["path"]).is_file()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_gui_reports_when_filters_remove_every_variant(tmp_path):
+    server, token = create_server(tmp_path)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        body, content_type = multipart(
+            {
+                "query": EXAMPLES / "demo-annotated.vcf",
+                "universe": EXAMPLES / "demo-universe.txt",
+                "gene_sets": EXAMPLES / "demo-gene-sets.gmt",
+            },
+            {"max_af": "0"},
+        )
+        request = Request(
+            f"http://127.0.0.1:{server.server_port}/{token}/api/analyse",
+            data=body,
+            headers={"Content-Type": content_type},
+        )
+        try:
+            urlopen(request)
+        except HTTPError as error:
+            assert "No variants remain" in error.read().decode()
+        else:
+            raise AssertionError("Empty filtered VCF should fail")
     finally:
         server.shutdown()
         server.server_close()

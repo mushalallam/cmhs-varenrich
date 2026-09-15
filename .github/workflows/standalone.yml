@@ -9,23 +9,19 @@ permissions:
   contents: write
 
 jobs:
-  resources:
+  python-packages:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install .
-      - run: varenrich download-resources --output human-resources
-      - run: >-
-          python packaging/package_resources.py
-          --annotations human-resources/human-annotations.gmt
-          --manifest human-resources/human-annotations.manifest.json
-          --version 0.1.0
+      - run: python -m pip install build
+      - run: python -m build --outdir release-assets
+      - run: python packaging/checksum_files.py release-assets/*.whl release-assets/*.tar.gz
       - uses: actions/upload-artifact@v4
         with:
-          name: CMHS-VarEnrich-Human-Annotations
+          name: CMHS-VarEnrich-Python
           path: release-assets/*
           if-no-files-found: error
       - name: Attach files to release
