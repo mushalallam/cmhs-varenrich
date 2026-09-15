@@ -33,6 +33,15 @@ def test_mapping_and_manifest(tmp_path):
     assert len(data["inputs"][0]["sha256"]) == 64
 
 
+def test_mapping_accepts_windows_newlines(tmp_path):
+    mapping = tmp_path / "mapping.csv"
+    mapping.write_bytes(
+        b"gene,term_id,term_name,source\r\nPAH,D1,Phenylketonuria,Disease\r\n"
+    )
+    sets = build_mapping_gene_sets(mapping)
+    assert sets[0].genes == frozenset({"PAH"})
+
+
 def test_official_hpo_and_clinvar_adapters():
     hpo = build_hpo_gene_sets(EXAMPLES / "mini-hpo.tsv")
     assert hpo[0].genes == {"PAH", "GCH1"}

@@ -13,6 +13,23 @@ from .models import GeneSet, VariantRecord
 GENE_COLUMNS = ("gene", "gene_symbol", "symbol", "hgnc_symbol")
 
 
+def sniff_delimited_dialect(sample: str) -> csv.Dialect:
+    """Detect common delimiters consistently across Unix and Windows newlines."""
+    normalized = "\n".join(line for line in sample.splitlines() if line.strip())
+    try:
+        return csv.Sniffer().sniff(normalized, delimiters=",\t;")
+    except csv.Error as error:
+        header = next((line for line in normalized.splitlines() if line.strip()), "")
+        delimiter = max(("\t", ",", ";"), key=header.count)
+        if not header or header.count(delimiter) == 0:
+            message = (
+                "Could not determine table delimiter; use CSV, TSV, "
+                "or semicolon-separated data"
+            )
+            raise ValueError(message) from error
+        return type("FallbackDialect", (csv.excel,), {"delimiter": delimiter})()
+
+
 def normalize_gene(value: str) -> str:
     return value.strip().upper()
 
@@ -34,7 +51,7 @@ def read_variant_table(path: str | Path) -> list[VariantRecord]:
     with file_path.open(encoding="utf-8-sig", newline="") as handle:
         sample = handle.read(4096)
         handle.seek(0)
-        dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
+        dialect = sniff_delimited_dialect(sample)
         reader = csv.DictReader(handle, dialect=dialect)
         headings = {heading.strip().lower(): heading for heading in (reader.fieldnames or [])}
         gene_key = next((headings[key] for key in GENE_COLUMNS if key in headings), None)

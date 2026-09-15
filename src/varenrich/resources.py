@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .io import normalize_gene
+from .io import normalize_gene, sniff_delimited_dialect
 from .models import GeneSet
 
 
@@ -117,7 +117,7 @@ def build_mapping_gene_sets(path: str | Path) -> list[GeneSet]:
     with Path(path).open(encoding="utf-8-sig", newline="") as handle:
         sample = handle.read(4096)
         handle.seek(0)
-        dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
+        dialect = sniff_delimited_dialect(sample)
         reader = csv.DictReader(handle, dialect=dialect)
         headings = {heading.lower().strip(): heading for heading in reader.fieldnames or []}
         required = {"gene", "term_id", "term_name"}
