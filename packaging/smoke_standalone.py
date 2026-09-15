@@ -51,7 +51,10 @@ def main() -> int:
             text=True,
         )
         report = Path(directory) / "report.html"
-        if not report.is_file() or "Hyperphenylalaninemia" not in report.read_text():
+        if (
+            not report.is_file()
+            or "Hyperphenylalaninemia" not in report.read_text(encoding="utf-8")
+        ):
             raise SystemExit("Standalone end-to-end report check failed")
     print(json.dumps({"standalone": "PASS", "version": args.version}))
     return 0
