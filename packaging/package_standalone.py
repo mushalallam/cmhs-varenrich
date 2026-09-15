@@ -5,9 +5,18 @@ from __future__ import annotations
 import argparse
 import hashlib
 import io
+import stat
 import tarfile
 import zipfile
 from pathlib import Path
+
+
+def _zip_info(path: str, mode: int) -> zipfile.ZipInfo:
+    info = zipfile.ZipInfo(path)
+    info.create_system = 3
+    info.external_attr = (stat.S_IFREG | mode) << 16
+    info.compress_type = zipfile.ZIP_DEFLATED
+    return info
 
 
 def main() -> int:
@@ -52,12 +61,10 @@ def main() -> int:
         )
     if args.format == "zip":
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
-            binary = zipfile.ZipInfo(f"{stem}/{args.binary.name}")
-            binary.external_attr = 0o755 << 16
+            binary = _zip_info(f"{stem}/{args.binary.name}", 0o755)
             bundle.writestr(binary, args.binary.read_bytes())
             for name, data, mode in extras:
-                info = zipfile.ZipInfo(f"{stem}/{name}")
-                info.external_attr = mode << 16
+                info = _zip_info(f"{stem}/{name}", mode)
                 bundle.writestr(info, data)
     else:
         with tarfile.open(archive, "w:gz") as bundle:
@@ -69,6 +76,21 @@ def main() -> int:
                 info = tarfile.TarInfo(f"{stem}/{name}")
                 info.size, info.mode = len(data), mode
                 bundle.addfile(info, io.BytesIO(data))
+    executable_names = {args.binary.name, *(name for name, _, mode in extras if mode & 0o111)}
+    if args.format == "zip":
+        with zipfile.ZipFile(archive) as bundle:
+            archived_modes = {
+                Path(info.filename).name: (info.external_attr >> 16) & 0o777
+                for info in bundle.infolist()
+            }
+    else:
+        with tarfile.open(archive, "r:gz") as bundle:
+            archived_modes = {
+                Path(info.name).name: info.mode & 0o777 for info in bundle.getmembers()
+            }
+    for name in executable_names:
+        if not archived_modes.get(name, 0) & 0o111:
+            raise SystemExit(f"Archive lost executable permissions for {name}")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksum = archive.with_name(f"{archive.name}.sha256")
     checksum.write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
